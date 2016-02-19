@@ -369,6 +369,7 @@ int main() {
 	result = vk::createShaderModule(device, &fragmentShaderModuleCreateInfo, nullptr, &fragmentShader);
 	std::cout << "Create fragment shader module result: " << vkResultToString(result) << std::endl;
 
+
 	/*
 		Graphics Pipeline
 	*/
