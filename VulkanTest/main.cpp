@@ -112,6 +112,34 @@ const std::string vKPhysicalDevicePropertiesToString(const vk::PhysicalDevicePro
 	return str;
 }
 
+// Load a binary file into a buffer (e.g. SPIR-V)
+char * readBinaryFile(const char * filename, size_t * psize)
+{
+	long int size;
+	size_t retval;
+	void *shader_code;
+
+	FILE *fp;
+	if (fopen_s(&fp, filename, "rb") != 0) {
+		std::cout << "could not open file " << filename << "\n";
+		return NULL;
+	}
+	if (!fp) return NULL;
+
+	fseek(fp, 0L, SEEK_END);
+	size = ftell(fp);
+
+	fseek(fp, 0L, SEEK_SET);
+
+	shader_code = malloc(size);
+	retval = fread(shader_code, size, 1, fp);
+	assert(retval == 1);
+
+	*psize = size;
+
+	return (char *)shader_code;
+}
+
 VKAPI_ATTR VkBool32 VKAPI_CALL dbgFunc(VkFlags msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject, size_t location, int32_t msgCode, const char *pLayerPrefix, const char * pMsg, void * pUserData) {
 	std::string messageString;
 	std::string pLayerPrefixString(pLayerPrefix);
@@ -342,33 +370,21 @@ int main() {
 	/*
 		Shaders
 	*/
-	char const vss[] =
-		"#version 450 core\n"
-		"layout(location = 0) in vec2 aVertex;\n"
-		"layout(location = 1) in vec3 aColor;\n"
-		"out vec3 vColor;\n"
-		"void main() {\n"
-		"    vColor = aColor;\n"
-		"    gl_Position = vec4(aVertex, 0, 1);\n"
-		"}\n"
-		;
-	char const fss[] =
-		"#version 450 core\n"
-		"layout(location = 0) out vec4 outColor;\n"
-		"in vec3 vColor;\n"
-		"void main() {\n"
-		"	outColor = vec4(vColor, 1);\n"
-		"}\n"
-		;
-	vk::ShaderModuleCreateInfo vertexShaderModuleCreateInfo(0, sizeof(vss), reinterpret_cast<const std::uint32_t *>(vss));
+	size_t sizeVss;
+	auto vertCode = readBinaryFile("../shaders/vert.spv", &sizeVss);
+	vk::ShaderModuleCreateInfo vertexShaderModuleCreateInfo(0, sizeVss, (uint32_t*)vertCode);
+	
 	vk::ShaderModule vertexShader;
 	result = vk::createShaderModule(device, &vertexShaderModuleCreateInfo, nullptr, &vertexShader);
 	std::cout << "Create vertex shader module result: " << vkResultToString(result) << std::endl;
-	vk::ShaderModuleCreateInfo fragmentShaderModuleCreateInfo(0, sizeof(fss), reinterpret_cast<const std::uint32_t *>(fss));
+
+	size_t sizeFss;
+	auto fragCode = readBinaryFile("../shaders/frag.spv", &sizeFss);
+	vk::ShaderModuleCreateInfo fragmentShaderModuleCreateInfo(0, sizeFss, (uint32_t*)fragCode);
+
 	vk::ShaderModule fragmentShader;
 	result = vk::createShaderModule(device, &fragmentShaderModuleCreateInfo, nullptr, &fragmentShader);
 	std::cout << "Create fragment shader module result: " << vkResultToString(result) << std::endl;
-
 
 	/*
 		Graphics Pipeline
